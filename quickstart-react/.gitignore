@@ -1,0 +1,9 @@
+.env
+.env.local
+.env.*.local
+.mappsrc
+
+# Build output (can contain inlined VITE_* values; deploy with CI or local build)
+build/
+dist/
+node_modules

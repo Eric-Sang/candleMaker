@@ -1,0 +1,249 @@
+body {
+  margin: 0;
+  font-family: "Roboto", sans-serif;
+}
+
+.App {
+  min-height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.app-nav {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border-color, #e0e0e0);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.app-nav-tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.app-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.customer-mode-buttons {
+  display: flex;
+  gap: 12px;
+  padding: 24px;
+  flex-wrap: wrap;
+}
+
+.create-order-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.create-order-section-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.customer-form-bar,
+.return-customer-bar,
+.new-customer-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 24px;
+  background: var(--background-color-secondary, #f5f5f5);
+  border-bottom: 1px solid var(--border-color, #e0e0e0);
+}
+
+.customer-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 24px;
+}
+
+.customer-modal {
+  background: var(--background-color, #fff);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  max-width: 420px;
+  width: 100%;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.customer-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-color, #e0e0e0);
+}
+
+.customer-modal-body {
+  padding: 16px 20px;
+  overflow-y: auto;
+}
+
+.customer-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.customer-list li {
+  margin: 0;
+  padding: 0;
+}
+
+.customer-list-item {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  text-align: left;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-color-primary, #323338);
+}
+
+.customer-list-item:hover {
+  background: var(--background-color-hover, #e6e9ef);
+}
+
+.order-form {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 16px 24px;
+  flex-wrap: wrap;
+}
+
+.order-form-field {
+  max-width: 140px;
+  width: 100%;
+}
+
+.order-form-add-btn {
+  align-self: center;
+}
+
+.order-form-hint {
+  width: 100%;
+  margin-top: 6px;
+}
+
+.order-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 24px 8px;
+}
+
+.order-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 8px 12px;
+  background-color: #fafafa;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.order-row-number {
+  font-weight: 600;
+  color: #374151;
+  min-width: 64px;
+  flex-shrink: 0;
+  font-size: 0.875rem;
+}
+
+.order-row-dropdown {
+  min-width: 100px;
+  max-width: 160px;
+  width: 220px;
+}
+
+.order-row-inscription {
+  min-width: 140px;
+  max-width: 200px;
+  width: 200px;
+}
+
+.order-row-remove {
+  flex-shrink: 0;
+}
+
+.order-submit {
+  padding: 12px 24px 24px;
+  border-top: 1px solid var(--border-color, #e0e0e0);
+}
+
+.order-submit-message {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.orders-list-view {
+  padding: 24px;
+}
+
+.orders-list-view-note {
+  display: block;
+  margin-bottom: 12px;
+}
+
+.orders-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.orders-list-item {
+  padding: 12px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background-color: #fafafa;
+}
+
+.orders-list-item-name {
+  font-weight: 600;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.orders-list-item-cols {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.orders-list-item-col {
+  white-space: nowrap;
+}
