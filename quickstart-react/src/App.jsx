@@ -30,7 +30,7 @@ const App = () => {
             size="small"
             onClick={() => setView(VIEW_LIST)}
           >
-            View orderssss
+            View orders
           </Button>
         </nav>
       </header>

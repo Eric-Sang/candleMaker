@@ -20,21 +20,21 @@ export const CRM_BOARD_ID =
 export const ORDER_COLUMN_TITLES = {
   CUSTOMER_NAME: "Customer name",
   ORDER_NUMBER: "Order Number",
-  FIRST_NAME: "First name",
-  LAST_NAME: "Last name",
+  FIRST_NAME: "First Name",
+  LAST_NAME: "Last Name",
   CANDLE_1: "Candle 1",
   CANDLE_2: "Candle 2",
   CANDLE_3: "Candle 3",
   INSCRIPTION: "Inscription",
-  LAST_UPDATE_DATE: "Last Update Date",
+  LAST_UPDATE_DATE: "Created Date",
   STATUS: "Status",
 };
 
 /** CRM (Contacts) board column titles – used when adding a new customer to the CRM. */
 const CRM_COLUMN_TITLES = {
   CONTACT: "Contact",
-  FIRST_NAME: "First name",
-  LAST_NAME: "Last name",
+  FIRST_NAME: "First Name",
+  LAST_NAME: "Last Name",
 };
 
 export async function getCandleOptionsFromBoard(monday, boardId) {
@@ -84,36 +84,89 @@ function buildOrderLineColumnValues(columnIds, payload) {
   if (columnIds.firstName && first !== "") values[columnIds.firstName] = first;
   const last = (payload.lastName || "").trim();
   if (columnIds.lastName && last !== "") values[columnIds.lastName] = last;
+  const isTextColumn = (type) => type && String(type).toLowerCase() === "text";
   if (columnIds.option1 && payload.option1)
-    values[columnIds.option1] = { labels: [payload.option1] };
+    values[columnIds.option1] = isTextColumn(columnIds.option1Type)
+      ? payload.option1
+      : { labels: [payload.option1] };
   if (columnIds.option2 && payload.option2)
-    values[columnIds.option2] = { labels: [payload.option2] };
+    values[columnIds.option2] = isTextColumn(columnIds.option2Type)
+      ? payload.option2
+      : { labels: [payload.option2] };
   if (columnIds.option3 && payload.option3)
-    values[columnIds.option3] = { labels: [payload.option3] };
+    values[columnIds.option3] = isTextColumn(columnIds.option3Type)
+      ? payload.option3
+      : { labels: [payload.option3] };
   const inscription = (payload.inscription || "").trim();
   if (columnIds.inscription && inscription !== "")
     values[columnIds.inscription] = inscription;
   if (columnIds.lastUpdateDate && payload.lastUpdateDate) {
     values[columnIds.lastUpdateDate] = payload.lastUpdateDate;
   }
-  if (columnIds.status) {
-    values[columnIds.status] = { labels: ["Created"] };
-  }
+  if (columnIds.status)
+    values[columnIds.status] = isTextColumn(columnIds.statusType)
+      ? "Created"
+      : { labels: ["Created"] };
   return values;
 }
 
+/** Build column values for updating an order item (first name, last name, customer name, candles, inscription only). */
+function buildOrderUpdateColumnValues(columnIds, payload) {
+  const values = {};
+  const customerName = [payload.firstName, payload.lastName]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+  if (columnIds.customerName && customerName)
+    values[columnIds.customerName] = customerName;
+  const first = (payload.firstName || "").trim();
+  if (columnIds.firstName) values[columnIds.firstName] = first;
+  const last = (payload.lastName || "").trim();
+  if (columnIds.lastName) values[columnIds.lastName] = last;
+  const isTextColumn = (type) => type && String(type).toLowerCase() === "text";
+  if (columnIds.option1 != null)
+    values[columnIds.option1] = payload.option1
+      ? isTextColumn(columnIds.option1Type)
+        ? payload.option1
+        : { labels: [payload.option1] }
+      : "";
+  if (columnIds.option2 != null)
+    values[columnIds.option2] = payload.option2
+      ? isTextColumn(columnIds.option2Type)
+        ? payload.option2
+        : { labels: [payload.option2] }
+      : "";
+  if (columnIds.option3 != null)
+    values[columnIds.option3] = payload.option3
+      ? isTextColumn(columnIds.option3Type)
+        ? payload.option3
+        : { labels: [payload.option3] }
+      : "";
+  const inscription = (payload.inscription || "").trim();
+  if (columnIds.inscription != null)
+    values[columnIds.inscription] = inscription;
+  return values;
+}
+
+export async function updateOrderItem(
+  monday,
+  boardId,
+  itemId,
+  columnIds,
+  payload
+) {
+  if (!monday || !boardId || !itemId || !columnIds) return null;
+  const columnValues = buildOrderUpdateColumnValues(columnIds, payload);
+  return updateItem(monday, itemId, boardId, columnValues);
+}
+
 function formatMondayDate(date) {
-  const d = date instanceof Date ? date : new Date(date);
+  const d = date instanceof Date ? new Date(date) : new Date(date);
   const dateStr = d.toISOString().slice(0, 10);
   const timeStr = d.toTimeString().slice(0, 8);
   return { date: dateStr, time: timeStr };
 }
 
-/**
- * Create Monday items for a full order (one item per order line).
- * Generates one Order Number per submission and sets Status = "Created" and Last Update Date = creation time
- * on every row so you can group by order and see creation date.
- */
 export async function createOrderItems(
   monday,
   boardId,
@@ -133,8 +186,8 @@ export async function createOrderItems(
   for (let i = 0; i < orderRows.length; i++) {
     const row = orderRows[i];
     const itemName =
-      [firstName, lastName].filter(Boolean).join(" ") +
-        (orderRows.length > 1 ? ` - Line ${i + 1}` : "") || `Order ${i + 1}`;
+      [firstName, lastName].filter(Boolean).join(" ").trim() ||
+      `Order ${i + 1}`;
     const columnValues = buildOrderLineColumnValues(columnIds, {
       firstName,
       lastName,
@@ -151,23 +204,99 @@ export async function createOrderItems(
   return created;
 }
 
+function findColumn(byTitle, typeByTitle, ...possibleTitles) {
+  for (const t of possibleTitles) {
+    if (byTitle[t]) return { id: byTitle[t], type: typeByTitle[t] || "" };
+  }
+  return null;
+}
+
+/**
+ * Maps board columns to the IDs needed for order creation.
+ * Supports "First name"/"First Name" and "Last name"/"Last Name" etc.
+ */
 export function mapBoardColumnsForOrder(columns) {
-  const titles = ORDER_COLUMN_TITLES;
+  if (!Array.isArray(columns) || columns.length === 0) return null;
   const byTitle = {};
+  const typeByTitle = {};
   columns.forEach((col) => {
-    byTitle[col.title] = col.id;
+    if (col?.title != null) {
+      byTitle[col.title] = col.id;
+      typeByTitle[col.title] = col.type ?? "";
+    }
   });
+  const titles = ORDER_COLUMN_TITLES;
+  const firstNameCol = findColumn(
+    byTitle,
+    typeByTitle,
+    "First Name",
+    "First name"
+  );
+  const lastNameCol = findColumn(
+    byTitle,
+    typeByTitle,
+    "Last Name",
+    "Last name"
+  );
+  const customerNameCol = findColumn(
+    byTitle,
+    typeByTitle,
+    titles.CUSTOMER_NAME,
+    "Customer name"
+  );
+  const orderNumberCol = findColumn(
+    byTitle,
+    typeByTitle,
+    titles.ORDER_NUMBER,
+    "Order Number"
+  );
+  const option1Col = findColumn(
+    byTitle,
+    typeByTitle,
+    titles.CANDLE_1,
+    "Candle 1"
+  );
+  const option2Col = findColumn(
+    byTitle,
+    typeByTitle,
+    titles.CANDLE_2,
+    "Candle 2"
+  );
+  const option3Col = findColumn(
+    byTitle,
+    typeByTitle,
+    titles.CANDLE_3,
+    "Candle 3"
+  );
+  const inscriptionCol = findColumn(
+    byTitle,
+    typeByTitle,
+    titles.INSCRIPTION,
+    "Inscription"
+  );
+  const lastUpdateDateCol = findColumn(
+    byTitle,
+    typeByTitle,
+    titles.LAST_UPDATE_DATE,
+    "Created Date"
+  );
+  const statusCol = findColumn(byTitle, typeByTitle, titles.STATUS, "Status");
+
   return {
-    customerName: byTitle[titles.CUSTOMER_NAME],
-    orderNumber: byTitle[titles.ORDER_NUMBER],
-    firstName: byTitle[titles.FIRST_NAME],
-    lastName: byTitle[titles.LAST_NAME],
-    option1: byTitle[titles.CANDLE_1],
-    option2: byTitle[titles.CANDLE_2],
-    option3: byTitle[titles.CANDLE_3],
-    inscription: byTitle[titles.INSCRIPTION],
-    lastUpdateDate: byTitle[titles.LAST_UPDATE_DATE],
-    status: byTitle[titles.STATUS],
+    firstName: firstNameCol?.id,
+    lastName: lastNameCol?.id,
+    customerName: customerNameCol?.id,
+    orderNumber: orderNumberCol?.id,
+    option1: option1Col?.id,
+    option2: option2Col?.id,
+    option3: option3Col?.id,
+    option1Type: option1Col?.type,
+    option2Type: option2Col?.type,
+    option3Type: option3Col?.type,
+    inscription: inscriptionCol?.id,
+    lastUpdateDate: lastUpdateDateCol?.id,
+    status: statusCol?.id,
+    statusType: statusCol?.type,
   };
 }
 
@@ -178,21 +307,26 @@ export async function addCustomerToCrmBoard(
   lastName
 ) {
   if (!monday || !crmBoardId) return null;
-  const first = (firstName || "").trim();
-  const last = (lastName || "").trim();
-  const fullName = [first, last].filter(Boolean).join(" ") || "New contact";
-  const columns = await getBoardColumns(monday, crmBoardId);
+  const cols = await getBoardColumns(monday, crmBoardId);
   const byTitle = {};
-  columns.forEach((col) => {
-    byTitle[col.title] = col.id;
+  cols.forEach((c) => {
+    if (c?.id != null && c?.title != null) byTitle[c.title] = c.id;
   });
-  const contactColId = byTitle[CRM_COLUMN_TITLES.CONTACT];
-  const firstNameColId = byTitle[CRM_COLUMN_TITLES.FIRST_NAME];
-  const lastNameColId = byTitle[CRM_COLUMN_TITLES.LAST_NAME];
+  const fullName =
+    [firstName, lastName].filter(Boolean).join(" ").trim() || "Unknown";
   const columnValues = {};
+  const contactColId = byTitle[CRM_COLUMN_TITLES.CONTACT] || byTitle["Contact"];
   if (contactColId) columnValues[contactColId] = fullName;
-  if (firstNameColId && first) columnValues[firstNameColId] = first;
-  if (lastNameColId && last) columnValues[lastNameColId] = last;
+  const firstNameColId =
+    byTitle[CRM_COLUMN_TITLES.FIRST_NAME] ||
+    byTitle["First Name"] ||
+    byTitle["First name"];
+  const lastNameColId =
+    byTitle[CRM_COLUMN_TITLES.LAST_NAME] ||
+    byTitle["Last Name"] ||
+    byTitle["Last name"];
+  if (firstNameColId && firstName) columnValues[firstNameColId] = firstName;
+  if (lastNameColId && lastName) columnValues[lastNameColId] = lastName;
   const item = await createItem(monday, crmBoardId, fullName, columnValues);
   return item ?? null;
 }
@@ -236,6 +370,47 @@ export async function getBoardItems(monday, boardId) {
   }));
 }
 
+/** Get column values as title -> text for an item. */
+function getItemColumnTextMap(item) {
+  const map = {};
+  (item.column_values ?? []).forEach((cv) => {
+    const title = cv.title ?? cv.id;
+    if (title) map[title] = (cv.text ?? "").trim();
+  });
+  return map;
+}
+
+/**
+ * Fetch all items from the Candle Orders board and return only those with Status = "Created".
+ * Each returned item includes a row object for table display.
+ */
+export async function getOrdersWithStatusCreated(monday, boardId) {
+  const items = await getBoardItems(monday, boardId);
+  const created = items.filter((item) => {
+    const cols = getItemColumnTextMap(item);
+    const status = (cols["Status"] ?? cols["status"] ?? "").toLowerCase();
+    return status === "created";
+  });
+  return created.map((item) => {
+    const cols = getItemColumnTextMap(item);
+    return {
+      id: item.id,
+      name: item.name,
+      customerName:
+        cols["Customer name"] ?? cols["Customer Name"] ?? item.name ?? "",
+      orderNumber: cols["Order Number"] ?? cols["Order number"] ?? "",
+      firstName: cols["First Name"] ?? cols["First name"] ?? "",
+      lastName: cols["Last Name"] ?? cols["Last name"] ?? "",
+      candle1: cols["Candle 1"] ?? "",
+      candle2: cols["Candle 2"] ?? "",
+      candle3: cols["Candle 3"] ?? "",
+      inscription: cols["Inscription"] ?? "",
+      lastUpdateDate: cols["Created Date"] ?? "",
+      status: cols["Status"] ?? cols["status"] ?? "",
+    };
+  });
+}
+
 function getCustomerNameFromItem(item) {
   const cols = (item.column_values || []).reduce((acc, cv) => {
     if (cv?.title != null) acc[cv.title] = cv?.text ?? "";
@@ -277,53 +452,55 @@ export async function getCustomersFromBoard(monday, boardId) {
   });
 }
 
-function formatMondayError(errors) {
-  if (!Array.isArray(errors) || errors.length === 0) return null;
-  const first = errors[0];
-  const msg = first?.message || "Unknown error";
-  const data = first?.extensions?.error_data;
-  if (data?.column_name) {
-    return `${msg} (column: ${data.column_name})`;
-  }
-  return msg;
-}
-
 export async function createItem(monday, boardId, itemName, columnValues) {
-  const query = `
+  if (!monday || !boardId) return null;
+  const mutation = `
     mutation ($boardId: ID!, $itemName: String!, $columnValues: JSON!) {
       create_item(board_id: $boardId, item_name: $itemName, column_values: $columnValues) {
         id
       }
     }
   `;
-  const res = await monday.api(query, {
+  const res = await monday.api(mutation, {
     variables: {
       boardId,
-      itemName,
-      columnValues: JSON.stringify(columnValues),
+      itemName: itemName || "New item",
+      columnValues: JSON.stringify(columnValues || {}),
     },
   });
-  if (res?.errors?.length) {
-    const message = formatMondayError(res.errors) || "Invalid column value";
-    throw new Error(message);
-  }
-  return res?.data?.create_item;
+  return res?.data?.create_item ?? null;
 }
 
 export async function updateItem(monday, itemId, boardId, columnValues) {
-  const query = `
+  if (!monday || !boardId || !itemId) return null;
+  const mutation = `
     mutation ($boardId: ID!, $itemId: ID!, $columnValues: JSON!) {
       change_multiple_column_values(board_id: $boardId, item_id: $itemId, column_values: $columnValues) {
         id
       }
     }
   `;
-  const res = await monday.api(query, {
+  const res = await monday.api(mutation, {
     variables: {
       boardId,
       itemId,
-      columnValues: JSON.stringify(columnValues),
+      columnValues: JSON.stringify(columnValues || {}),
     },
   });
-  return res?.data?.change_multiple_column_values;
+  return res?.data?.change_multiple_column_values ?? null;
+}
+
+export async function deleteItem(monday, itemId) {
+  if (!monday || !itemId) return null;
+  const mutation = `
+    mutation ($itemId: ID!) {
+      delete_item(item_id: $itemId) {
+        id
+      }
+    }
+  `;
+  const res = await monday.api(mutation, {
+    variables: { itemId },
+  });
+  return res?.data?.delete_item ?? null;
 }

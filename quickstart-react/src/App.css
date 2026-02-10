@@ -36,6 +36,7 @@ body {
 
 .customer-mode-buttons {
   display: flex;
+  justify-content: center;
   gap: 12px;
   padding: 24px;
   flex-wrap: wrap;
@@ -102,6 +103,40 @@ body {
   overflow-y: auto;
 }
 
+.edit-order-modal {
+  max-width: 480px;
+}
+
+.edit-order-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.edit-order-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.edit-order-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-color-primary, #323338);
+}
+
+.edit-order-error {
+  display: block;
+  margin-bottom: 12px;
+}
+
+.edit-order-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .customer-list {
   list-style: none;
   margin: 0;
@@ -143,6 +178,14 @@ body {
   width: 100%;
 }
 
+.order-form-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-color-secondary, #6b7280);
+  margin-bottom: 4px;
+}
+
 .order-form-add-btn {
   align-self: center;
 }
@@ -171,6 +214,24 @@ body {
   max-width: 100%;
 }
 
+.order-row.order-row--incomplete {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 1px #dc2626;
+}
+
+.order-row-candles {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.order-row-required-hint {
+  flex-basis: 100%;
+  margin-top: 4px;
+  font-size: 0.75rem;
+}
+
 .order-row-number {
   font-weight: 600;
   color: #374151;
@@ -180,9 +241,9 @@ body {
 }
 
 .order-row-dropdown {
-  min-width: 100px;
-  max-width: 160px;
-  width: 220px;
+  min-width: 180px;
+  max-width: 320px;
+  width: 280px;
 }
 
 .order-row-inscription {
@@ -207,6 +268,30 @@ body {
 
 .orders-list-view {
   padding: 24px;
+}
+
+.orders-list-view .table-container {
+  overflow-x: auto;
+  max-width: 100%;
+  margin-top: 8px;
+}
+
+.orders-list-view .table-container table {
+  table-layout: auto;
+  width: auto;
+  min-width: 100%;
+}
+
+.orders-list-view .table-container td,
+.orders-list-view .table-container th {
+  white-space: normal;
+  min-width: 0;
+}
+
+.order-actions-cell {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 .orders-list-view-note {

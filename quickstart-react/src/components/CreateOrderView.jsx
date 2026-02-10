@@ -135,6 +135,12 @@ export function CreateOrderView({ monday, boardId }) {
   const getTextFieldValue = (e) =>
     (e?.target?.value !== undefined ? e.target.value : (typeof e === "string" ? e : "")) ?? "";
 
+  const isRowComplete = (row) =>
+    row.values.length >= 3 &&
+    row.values.every((v) => v && (v.label != null || v.value != null));
+
+  const allRowsComplete = orderRows.length > 0 && orderRows.every(isRowComplete);
+
   const handleSubmit = async () => {
     if (orderRows.length === 0) {
       setSubmitStatus("error");
@@ -155,9 +161,11 @@ export function CreateOrderView({ monday, boardId }) {
         };
         localStorage.setItem("candleOrdersDev", JSON.stringify(payload));
         setSubmitStatus("success");
+        setCustomerMode(null);
         setOrderRows([]);
         setFirstName("");
         setLastName("");
+        setSubmitError(null);
       } catch {
         setSubmitStatus("error");
         setSubmitError("Open this app on a board to create orders.");
@@ -180,9 +188,11 @@ export function CreateOrderView({ monday, boardId }) {
         await addCustomerToCrmBoard(monday, CRM_BOARD_ID, firstName, lastName);
       }
       setSubmitStatus("success");
+      setCustomerMode(null);
       setOrderRows([]);
       setFirstName("");
       setLastName("");
+      setSubmitError(null);
     } catch (err) {
       setSubmitStatus("error");
       setSubmitError(err?.message || err?.errors?.[0]?.message || "Failed to create orders.");
@@ -220,22 +230,37 @@ export function CreateOrderView({ monday, boardId }) {
             </div>
           </header>
           <section className="order-form">
-            <div className="order-form-field">
-              <TextField
-                size="small"
-                placeholder="First name"
-                value={firstName}
-                onChange={(e) => setFirstName(getTextFieldValue(e))}
-              />
-            </div>
-            <div className="order-form-field">
-              <TextField
-                size="small"
-                placeholder="Last name"
-                value={lastName}
-                onChange={(e) => setLastName(getTextFieldValue(e))}
-              />
-            </div>
+            {customerMode === "return" ? (
+              <>
+                <div className="order-form-field">
+                  <Text type="text2" color="secondary" className="order-form-label">First name</Text>
+                  <Text type="text1">{firstName || "—"}</Text>
+                </div>
+                <div className="order-form-field">
+                  <Text type="text2" color="secondary" className="order-form-label">Last name</Text>
+                  <Text type="text1">{lastName || "—"}</Text>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="order-form-field">
+                  <TextField
+                    size="small"
+                    placeholder="First name"
+                    value={firstName}
+                    onChange={(e) => setFirstName(getTextFieldValue(e))}
+                  />
+                </div>
+                <div className="order-form-field">
+                  <TextField
+                    size="small"
+                    placeholder="Last name"
+                    value={lastName}
+                    onChange={(e) => setLastName(getTextFieldValue(e))}
+                  />
+                </div>
+              </>
+            )}
             <Button className="order-form-add-btn" size="small" onClick={handleAddOrder}>
               Add order
             </Button>
@@ -272,6 +297,7 @@ export function CreateOrderView({ monday, boardId }) {
             onDropdownChange={handleDropdownChange}
             onInscriptionChange={handleInscriptionChange}
             onRemove={handleRemoveOrder}
+            isComplete={isRowComplete(row)}
           />
         ))}
       </section>
@@ -282,7 +308,7 @@ export function CreateOrderView({ monday, boardId }) {
         {submitStatus === "success" && (
           <Text type="text2" color="positive" className="order-submit-message">Orders created.</Text>
         )}
-        <Button onClick={handleSubmit} disabled={submitStatus === "loading"}>
+        <Button onClick={handleSubmit} disabled={submitStatus === "loading" || !allRowsComplete}>
           {submitStatus === "loading" ? "Creating…" : "Submit"}
         </Button>
       </section>
