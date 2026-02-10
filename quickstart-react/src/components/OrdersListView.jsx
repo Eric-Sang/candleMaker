@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { Loader, Text, Button } from "@vibe/core";
 import {
   Table,
@@ -8,7 +8,10 @@ import {
   TableRow,
   TableCell,
 } from "@vibe/core";
-import { getOrdersWithStatusCreated, getBoardColumns, mapBoardColumnsForOrder, getCandleOptionsFromBoard, deleteItem, CANDLES_BOARD_ID } from "../services/mondayApi";
+import { useBoardColumnIds } from "../hooks/useBoardColumnIds";
+import { useCandleOptions } from "../hooks/useCandleOptions";
+import { useOrdersWithStatusCreated } from "../hooks/useOrdersWithStatusCreated";
+import { deleteItem } from "../services/mondayApi";
 import { EditOrderModal } from "./EditOrderModal";
 import { DeleteConfirmModal } from "./DeleteConfirmModal";
 
@@ -27,11 +30,6 @@ const ORDER_COLUMNS = [
 ];
 
 export function OrdersListView({ monday, boardId }) {
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [columnIds, setColumnIds] = useState(null);
-  const [candleOptions, setCandleOptions] = useState([]);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [orderToEdit, setOrderToEdit] = useState(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -39,60 +37,9 @@ export function OrdersListView({ monday, boardId }) {
   const [deletingId, setDeletingId] = useState(null);
   const [deleteError, setDeleteError] = useState(null);
 
-  useEffect(() => {
-    if (!boardId || !monday) {
-      setLoading(false);
-      setOrders([]);
-      return;
-    }
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    getOrdersWithStatusCreated(monday, boardId)
-      .then((data) => {
-        if (!cancelled) setOrders(data ?? []);
-      })
-      .catch((err) => {
-        if (!cancelled) setError(err?.message ?? "Failed to load orders");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => { cancelled = true; };
-  }, [monday, boardId]);
-
-  useEffect(() => {
-    if (!boardId || !monday) return;
-    let cancelled = false;
-    getBoardColumns(monday, boardId)
-      .then((cols) => {
-        if (!cancelled) setColumnIds(mapBoardColumnsForOrder(cols));
-      })
-      .catch(() => {
-        if (!cancelled) setColumnIds(null);
-      });
-    return () => { cancelled = true; };
-  }, [monday, boardId]);
-
-  useEffect(() => {
-    if (!monday || !CANDLES_BOARD_ID) return;
-    let cancelled = false;
-    getCandleOptionsFromBoard(monday, CANDLES_BOARD_ID)
-      .then((opts) => {
-        if (!cancelled) setCandleOptions(opts ?? []);
-      })
-      .catch(() => {
-        if (!cancelled) setCandleOptions([]);
-      });
-    return () => { cancelled = true; };
-  }, [monday]);
-
-  const refetchOrders = () => {
-    if (!monday || !boardId) return;
-    getOrdersWithStatusCreated(monday, boardId)
-      .then((data) => setOrders(data ?? []))
-      .catch(() => {});
-  };
+  const columnIds = useBoardColumnIds(monday, boardId);
+  const { options: candleOptions } = useCandleOptions(monday);
+  const { orders, loading, error, refetch: refetchOrders } = useOrdersWithStatusCreated(monday, boardId);
 
   const openDeleteModal = (order) => {
     setOrderToDelete(order);

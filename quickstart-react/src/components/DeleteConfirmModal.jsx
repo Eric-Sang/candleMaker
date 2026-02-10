@@ -44,7 +44,7 @@ export function DeleteConfirmModal({
             </Text>
           )}
           <Text type="text2">
-            Delete order for {customerName}? This cannot be undone.
+            Delete order for {customerName}?
           </Text>
           <div className="edit-order-actions" style={{ marginTop: 16 }}>
             <Button kind="secondary" size="small" onClick={onClose} disabled={deleting}>

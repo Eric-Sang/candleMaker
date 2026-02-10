@@ -90,11 +90,11 @@ export function EditOrderModal({
           <div className="edit-order-form">
             <div className="edit-order-field">
               <label className="edit-order-label">First name</label>
-              <Text type="text2">{order.firstName || "—"}</Text>
+              <Text type="text2" weight="bold">{order.firstName || "—"}</Text>
             </div>
             <div className="edit-order-field">
               <label className="edit-order-label">Last name</label>
-              <Text type="text2">{order.lastName || "—"}</Text>
+              <Text type="text2" weight="bold">{order.lastName || "—"}</Text>
             </div>
             <div className="edit-order-field">
               <label className="edit-order-label">Candle 1</label>

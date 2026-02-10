@@ -1,95 +1,24 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState } from "react";
 import { TextField, Button, Text } from "@vibe/core";
 import { OrderRow } from "./OrderRow";
 import { ReturnCustomerModal } from "./ReturnCustomerModal";
-import {
-  getBoardColumns,
-  mapBoardColumnsForOrder,
-  createOrderItems,
-  addCustomerToCrmBoard,
-  getCandleOptionsFromBoard,
-  getCustomersFromBoard,
-  CANDLES_BOARD_ID,
-  CRM_BOARD_ID,
-} from "../services/mondayApi";
+import { useBoardColumnIds } from "../hooks/useBoardColumnIds";
+import { useCandleOptions } from "../hooks/useCandleOptions";
+import { useCustomersFromBoard } from "../hooks/useCustomersFromBoard";
+import { createOrderItems, addCustomerToCrmBoard, CRM_BOARD_ID } from "../services/mondayApi";
 
 export function CreateOrderView({ monday, boardId }) {
   const [customerMode, setCustomerMode] = useState(null);
   const [returnModalOpen, setReturnModalOpen] = useState(false);
-  const [customers, setCustomers] = useState([]);
-  const [customersLoading, setCustomersLoading] = useState(false);
-  const [customersError, setCustomersError] = useState(null);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [orderRows, setOrderRows] = useState([]);
-  const [columnIds, setColumnIds] = useState(null);
-  const [candleOptions, setCandleOptions] = useState([]);
-  const [candleSource, setCandleSource] = useState("idle");
-  const [submitStatus, setSubmitStatus] = useState(null);
-  const [submitError, setSubmitError] = useState(null);
+  const [submitState, setSubmitState] = useState({ status: null, error: null });
   const nextOrderIdRef = useRef(0);
 
-  useEffect(() => {
-    if (!boardId || !monday) return;
-    let cancelled = false;
-    getBoardColumns(monday, boardId)
-      .then((cols) => {
-        if (!cancelled) setColumnIds(mapBoardColumnsForOrder(cols));
-      })
-      .catch(() => {
-        if (!cancelled) setColumnIds({});
-      });
-    return () => { cancelled = true; };
-  }, [monday, boardId]);
-
-  useEffect(() => {
-    if (!returnModalOpen || !monday || !CRM_BOARD_ID) {
-      if (!returnModalOpen) setCustomers([]);
-      return;
-    }
-    let cancelled = false;
-    setCustomersLoading(true);
-    setCustomersError(null);
-    getCustomersFromBoard(monday, CRM_BOARD_ID)
-      .then((list) => {
-        if (!cancelled) {
-          setCustomers(list || []);
-          setCustomersLoading(false);
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setCustomers([]);
-          setCustomersLoading(false);
-          setCustomersError(err?.message || "Failed to load customers.");
-        }
-      });
-    return () => { cancelled = true; };
-  }, [returnModalOpen, monday]);
-
-  useEffect(() => {
-    if (!monday) return;
-    if (!CANDLES_BOARD_ID) {
-      setCandleOptions([]);
-      setCandleSource("no-board");
-      return;
-    }
-    let cancelled = false;
-    setCandleSource("loading");
-    getCandleOptionsFromBoard(monday, CANDLES_BOARD_ID)
-      .then((opts) => {
-        if (cancelled) return;
-        setCandleOptions(opts || []);
-        setCandleSource(opts?.length ? "board" : "empty");
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setCandleOptions([]);
-          setCandleSource("error");
-        }
-      });
-    return () => { cancelled = true; };
-  }, [monday]);
+  const columnIds = useBoardColumnIds(monday, boardId);
+  const { options: candleOptions, source: candleSource } = useCandleOptions(monday);
+  const { customers, loading: customersLoading, error: customersError } = useCustomersFromBoard(monday, returnModalOpen, CRM_BOARD_ID);
 
   const openReturnModal = () => setReturnModalOpen(true);
 
@@ -143,8 +72,7 @@ export function CreateOrderView({ monday, boardId }) {
 
   const handleSubmit = async () => {
     if (orderRows.length === 0) {
-      setSubmitStatus("error");
-      setSubmitError("Add at least one order line.");
+      setSubmitState({ status: "error", error: "Add at least one order line." });
       return;
     }
 
@@ -160,42 +88,36 @@ export function CreateOrderView({ monday, boardId }) {
           submittedAt: new Date().toISOString(),
         };
         localStorage.setItem("candleOrdersDev", JSON.stringify(payload));
-        setSubmitStatus("success");
+        setSubmitState({ status: "success", error: null });
         setCustomerMode(null);
         setOrderRows([]);
         setFirstName("");
         setLastName("");
-        setSubmitError(null);
       } catch {
-        setSubmitStatus("error");
-        setSubmitError("Open this app on a board to create orders.");
+        setSubmitState({ status: "error", error: "Open this app on a board to create orders." });
       }
       return;
     }
 
     const hasMapping = columnIds && Object.values(columnIds).some(Boolean);
     if (!hasMapping) {
-      setSubmitStatus("error");
-      setSubmitError('Board must have columns: "First name", "Last name", "Candle 1", "Candle 2", "Candle 3", "Inscription".');
+      setSubmitState({ status: "error", error: 'Board must have columns: "First name", "Last name", "Candle 1", "Candle 2", "Candle 3", "Inscription".' });
       return;
     }
 
-    setSubmitStatus("loading");
-    setSubmitError(null);
+    setSubmitState({ status: "loading", error: null });
     try {
       await createOrderItems(monday, boardId, columnIds, firstName, lastName, orderRows);
       if (customerMode === "new" && CRM_BOARD_ID) {
         await addCustomerToCrmBoard(monday, CRM_BOARD_ID, firstName, lastName);
       }
-      setSubmitStatus("success");
+      setSubmitState({ status: "success", error: null });
       setCustomerMode(null);
       setOrderRows([]);
       setFirstName("");
       setLastName("");
-      setSubmitError(null);
     } catch (err) {
-      setSubmitStatus("error");
-      setSubmitError(err?.message || err?.errors?.[0]?.message || "Failed to create orders.");
+      setSubmitState({ status: "error", error: err?.message || err?.errors?.[0]?.message || "Failed to create orders." });
     }
   };
 
@@ -302,14 +224,14 @@ export function CreateOrderView({ monday, boardId }) {
         ))}
       </section>
       <section className="order-submit">
-        {submitStatus === "error" && submitError && (
-          <Text type="text2" color="negative" className="order-submit-message">{submitError}</Text>
+        {submitState.status === "error" && submitState.error && (
+          <Text type="text2" color="negative" className="order-submit-message">{submitState.error}</Text>
         )}
-        {submitStatus === "success" && (
+        {submitState.status === "success" && (
           <Text type="text2" color="positive" className="order-submit-message">Orders created.</Text>
         )}
-        <Button onClick={handleSubmit} disabled={submitStatus === "loading" || !allRowsComplete}>
-          {submitStatus === "loading" ? "Creating…" : "Submit"}
+        <Button onClick={handleSubmit} disabled={submitState.status === "loading" || !allRowsComplete}>
+          {submitState.status === "loading" ? "Creating…" : "Submit"}
         </Button>
       </section>
     </>
